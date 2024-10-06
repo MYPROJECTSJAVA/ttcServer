@@ -1,6 +1,3 @@
-package Serverside;
-import ClientSide.Player;
-import Serverside.Game;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -11,15 +8,16 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Server {
-    String p1,p2;
-    static Game game=new Game();
-    private static Set<PrintWriter> clientWriters = new HashSet<>();
+    static Game game=new Game();//new game object
+    private static Set<PrintWriter> clientWriters = new HashSet<>();// needed to store the output object to sent responses to
+    static ServerSocket serverSocket;
+
     public void start(int port){
         try {
-            ServerSocket serverSocket = new ServerSocket(port);
-            System.out.println("Server is listening on port 5000...");
+            serverSocket = new ServerSocket(port);
+            System.out.println("Server is listening on port 6000...");
             int x=2;
-            // Continuously listen for client connections
+            // Listens for two clients to connect
             while (x>0) {
                 x--;
                 Socket clientSocket = serverSocket.accept();
@@ -27,12 +25,10 @@ public class Server {
 
                 // Handle client in a separate thread
                 new Thread(new ClientHandler(clientSocket)).start();
-                if(x==0){
-                    System.out.println("Two clients connected and assigned numbers");
-                }
             }
 
         } catch (IOException e) {
+            System.out.println("Exception at line 30 Server.java");
             e.printStackTrace();
         }
 
@@ -61,26 +57,24 @@ public class Server {
                 }
 
                 // Read messages from this client and broadcast to all others
-                String message;
-                int count=0;
-                Overloop:while ((message = input.readLine()) != null) {
-                    System.out.println("Received: " + message);
-                    if(message.equals("X") || message.equals("O")){
-                        game.addPlayer(message);
-                        System.out.println(message+" added a player");
-                        count++;
-                    }
-                    broadcast(message);
-                    if(count==2){
-                        break Overloop;
-                    }
+                String message=input.readLine();
+                System.out.println("Received: " + message);
+                if(message.equals("X") || message.equals("O")){
+                     game.addPlayer(message);//adds player to the game
+                     System.out.println(message+" added as player");
 
-                }
+                    }
+                broadcast(message);//sents back values to the clients
+
+
                 String messageToClients;
                 while(game.winner.equals("")){
                     message=input.readLine();
                     messageToClients=game.makeMove(message);
                     broadcast(messageToClients);
+                    if(!game.winner.equals("")){
+                        broadcast(game.winner);//send the winner to the clients
+                    }
                 }
 
                 // Remove client from the set when disconnected
@@ -91,6 +85,7 @@ public class Server {
                 input.close();
                 out.close();
                 socket.close();
+                serverSocket.close();
 
             } catch (IOException e) {
                 e.printStackTrace();
